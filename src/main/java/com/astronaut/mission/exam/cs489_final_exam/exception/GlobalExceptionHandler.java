@@ -1,5 +1,6 @@
 package com.astronaut.mission.exam.cs489_final_exam.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -10,6 +11,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -42,11 +45,30 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MethodArgumentNotValidException.class, IllegalStateException.class})
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, IllegalStateException.class})
     public ResponseEntity<ApiError> handleEnumConversionError(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
         String param = ex.getName();
         String message = "Invalid value for '" + param + "': " + ex.getValue();
         ApiError error = new ApiError(Instant.now(), 400, "Bad Request", message, request.getRequestURI());
         return ResponseEntity.badRequest().body(error);
+    }
+
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationErrors2(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                errors.put(error.getField(), error.getDefaultMessage())
+        );
+        return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, String>> handleConstraintViolations2(ConstraintViolationException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getConstraintViolations().forEach(violation ->
+                errors.put(violation.getPropertyPath().toString(), violation.getMessage())
+        );
+        return ResponseEntity.badRequest().body(errors);
     }
 }
